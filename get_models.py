@@ -14,6 +14,8 @@ import queue
 import matplotlib.pyplot as plt
 import sqlite3
 from sklearn.externals import joblib
+import model_name_generator
+
 
 def mean_confidence_interval(data, confidence=0.95):
     a = 1.0 * np.array(data)
@@ -87,29 +89,35 @@ class Machine(threading.Thread):
             bottom_cutoff = sum(bottom_cutoff)/len(bottom_cutoff)
 
 
-            if ml_stats['mean']>(self.max_mean*.95) and ml_stats['mean']>.1:
+            if ml_stats['mean']>(self.max_mean*.95) and ml_stats['mean']>.11:
 
                 self.max_mean = ml_stats['mean']
 
                 ml_interval = mean_confidence_interval(ml_models)
 
-                row = [str(list(X_test.columns)),ml_interval[0],ml_interval[1],ml_interval[2],bottom_cutoff,dividend_toggle]
+                row = [str(list(X_test.columns)),ml_interval[0],ml_interval[1],ml_interval[2],bottom_cutoff,len(df.columns),dividend_toggle]
 
 
-                details = pd.Series(row,index=['Features','mean', 'mean-','mean+','cutoff','dividend_toggle'])
+                details = pd.Series(row,index=['Features','mean', 'mean-','mean+','cutoff','columns', 'dividend_toggle'])
                 details = pd.DataFrame(details,columns=['Details']).T
 
                 clf = SVR(C=1.0, epsilon=0.2)
 
-                clf.fit(df[df.columns[:-4]],targets['Percent Change'])
-                name = str(features)[1:-1]
-                print(name)
-                name = name.replace(', ','_').replace("'",'').replace('/','-o-')
+                clf.fit(df,targets['Percent Change'])
 
-                joblib.dump(clf, 'models/%s %s.pkl' % (ml_stats['mean'].round(4), name))
+
+                features_str = str(features)[1:-1]
+
+
+                features_str = features_str.replace(', ','_').replace("'",'').replace('/','-o-')
+
+                model_name = model_name_generator.generate_name()
+                details.name = model_name
+                details['Name'] = model_name
+                joblib.dump(clf, 'models/%s.pkl' % (model_name))
                 print(details.T)
-                details.to_sql('model_results',self.conn,if_exists='append')
-                print(name)
+                details.to_sql('model_results',self.conn,if_exists='append', index=False)
+                print(model_name)
                 print('===================')
 
 
@@ -153,7 +161,9 @@ df = pd.read_csv('comapany_data.csv')
 
 df['Percent Change'] = (df['Close Price'] - df['Price']) / df['Price']
 
-df = df.drop(['Ticker', 'Shortable', '52W Range', 'Close Price', 'Price'], 1)
+df = df.drop(['52W Range', 'Close Price', 'Price'], 1)
+df.to_csv('azure_test_sec_industry.csv')
+input()
 
 #machine(df)
 df = clean_data(df)
@@ -175,6 +185,6 @@ for item in feature_choices:
 
 
 
-for i in range(17):
+for i in range(6):
     x = Machine(df, q, i)
     x.start()

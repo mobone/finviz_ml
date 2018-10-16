@@ -32,7 +32,6 @@ class Company_getter(threading.Thread):
                     if float(value[:-1]):
                         pass
                     if type(value) is str and value[-1:] == 'K':
-
                         value = float(value[:-1]) * 1000
                     elif type(value) is str and value[-1:] == 'M':
                         value = float(value[:-1]) * 1000000
@@ -45,9 +44,8 @@ class Company_getter(threading.Thread):
                     value = float(value[:-1])
 
                 self.earnings_dataframe.ix[index,key] = value
-        print(self.earnings_dataframe.columns)
-        input()
-        for column in ['_id','_rev','Earnings','Sector','Industry','Optionable','Index','Ticker','Shortable']:
+
+        for column in ['_id','_rev','Earnings','Optionable','Index','Ticker','Shortable']:
             if column in self.earnings_dataframe.columns:
                 self.earnings_dataframe = self.earnings_dataframe.drop(column, axis=1)
 
@@ -113,7 +111,7 @@ class Company_getter(threading.Thread):
 
         # get close price
         read_date = datetime.strptime(str(read_date), '%Y%m%d')
-        read_date = read_date + timedelta(days=60)
+        read_date = read_date + timedelta(days=90)
         read_date = int(read_date.strftime('%Y%m%d'))
         closing_entry = coll.find_one({'Root': self.symbol, 'Date': {'$gt': read_date, '$lte':read_date+7}}, {'Price':1})
         entry['Close Price'] = closing_entry['Price']
@@ -136,9 +134,10 @@ def read_config():
 
 
 
-ip, port, authSource, user, password = read_config()
+#ip, port, authSource, user, password = read_config()
 
-client = MongoClient(ip, port=port, authSource=authSource, username=user, password=password)
+#client = MongoClient(ip, port=port, authSource=authSource, username=user, password=password)
+client = MongoClient('localhost')
 db = client['finance']
 coll = db['finviz']
 symbols = coll.find({},{'Root': 1}).distinct('Root')
